@@ -5,6 +5,7 @@ import '../../core/constants/app_constants.dart';
 class UserModel {
   final String uid;
   final String name;
+  final String? username;
   final String role; // 'admin' or 'staff'
   final String? email;
   final String? password;
@@ -14,6 +15,7 @@ class UserModel {
   const UserModel({
     required this.uid,
     required this.name,
+    this.username,
     required this.role,
     this.email,
     this.password,
@@ -30,12 +32,18 @@ class UserModel {
   /// Arabic role display name
   String get roleArabic => isAdmin ? 'مدير النظام (Admin)' : 'موظف كاشير (Staff)';
 
+  /// Display username or fallback
+  String get displayUsername =>
+      username ?? (email != null && email!.contains('@') ? email!.split('@').first : uid);
+
   /// Converts UserModel to Firestore JSON Map
   Map<String, dynamic> toJson() {
+    final effectiveUsername = username ?? (email != null && email!.contains('@') ? email!.split('@').first : uid);
     return {
       'name': name,
+      'username': effectiveUsername,
       'role': role,
-      'email': email,
+      'email': email ?? '$effectiveUsername@gamecenter.local',
       'password': password,
       'createdAt': createdAt != null ? Timestamp.fromDate(createdAt!) : null,
       'lastLoginAt': lastLoginAt != null ? Timestamp.fromDate(lastLoginAt!) : null,
@@ -51,11 +59,16 @@ class UserModel {
       return null;
     }
 
+    final rawUsername = json['username'] as String?;
+    final rawEmail = json['email'] as String?;
+    final effectiveUid = uid.isNotEmpty ? uid : (json['uid'] as String? ?? (rawUsername ?? ''));
+
     return UserModel(
-      uid: uid.isNotEmpty ? uid : (json['uid'] as String? ?? ''),
+      uid: effectiveUid,
       name: json['name'] as String? ?? '',
+      username: rawUsername ?? (rawEmail != null && rawEmail.contains('@') ? rawEmail.split('@').first : effectiveUid),
       role: json['role'] as String? ?? AppConstants.roleStaff,
-      email: json['email'] as String?,
+      email: rawEmail ?? (rawUsername != null ? '$rawUsername@gamecenter.local' : null),
       password: json['password'] as String?,
       createdAt: parseDate(json['createdAt']),
       lastLoginAt: parseDate(json['lastLoginAt']),
@@ -71,6 +84,7 @@ class UserModel {
   UserModel copyWith({
     String? uid,
     String? name,
+    String? username,
     String? role,
     String? email,
     String? password,
@@ -80,6 +94,7 @@ class UserModel {
     return UserModel(
       uid: uid ?? this.uid,
       name: name ?? this.name,
+      username: username ?? this.username,
       role: role ?? this.role,
       email: email ?? this.email,
       password: password ?? this.password,

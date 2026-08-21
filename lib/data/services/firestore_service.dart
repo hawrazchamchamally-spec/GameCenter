@@ -497,25 +497,88 @@ class FirestoreService {
   // 4. USERS & ROLES OPERATIONS
   // ==========================================
 
-  /// Get user profile
+  /// Get user profile by UID or username document ID
   Future<UserModel?> getUserProfile(String uid) async {
-    final doc = await _usersCol.doc(uid).get();
-    if (!doc.exists) return null;
-    return UserModel.fromFirestore(doc);
+    if (uid.isEmpty) return null;
+    try {
+      final doc = await _usersCol.doc(uid).get();
+      if (doc.exists) return UserModel.fromFirestore(doc);
+      return null;
+    } catch (_) {
+      return null;
+    }
   }
 
-  /// Save or update user profile
+  /// Get user profile by username or email
+  Future<UserModel?> getUserByUsername(String usernameOrEmail) async {
+    if (usernameOrEmail.trim().isEmpty) return null;
+    final normalized = usernameOrEmail.trim().toLowerCase();
+
+    try {
+      // 1. Direct doc lookup by username/id
+      final directDoc = await _usersCol.doc(normalized).get();
+      if (directDoc.exists) return UserModel.fromFirestore(directDoc);
+
+      // 2. Query by username field
+      final queryByUsername = await _usersCol
+          .where('username', isEqualTo: normalized)
+          .limit(1)
+          .get();
+      if (queryByUsername.docs.isNotEmpty) {
+        return UserModel.fromFirestore(queryByUsername.docs.first);
+      }
+
+      // 3. Query by email field
+      final queryByEmail = await _usersCol
+          .where('email', isEqualTo: normalized)
+          .limit(1)
+          .get();
+      if (queryByEmail.docs.isNotEmpty) {
+        return UserModel.fromFirestore(queryByEmail.docs.first);
+      }
+
+      return null;
+    } catch (e) {
+      debugPrint('Error finding user by username: $e');
+      return null;
+    }
+  }
+
+  /// Save or update user profile with document ID as username/uid
   Future<void> saveUserProfile(UserModel user) async {
-    await _usersCol.doc(user.uid).set(user.toJson(), SetOptions(merge: true));
+    final effectiveDocId = user.username?.trim().toLowerCase() ?? user.uid;
+    if (effectiveDocId.isEmpty) return;
+    try {
+      await _usersCol.doc(effectiveDocId).set(user.toJson(), SetOptions(merge: true));
+    } catch (e) {
+      debugPrint('Error saving user profile: $e');
+      rethrow;
+    }
+  }
+
+  /// Delete staff user profile by UID / username
+  Future<void> deleteStaffUser(String uid) async {
+    if (uid.isEmpty) return;
+    try {
+      await _usersCol.doc(uid).delete();
+    } catch (e) {
+      debugPrint('Error deleting staff user: $e');
+      rethrow;
+    }
   }
 
   /// Stream of all staff and admin users
   Stream<List<UserModel>> getStaffUsersStream() {
-    return _usersCol
-        .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => UserModel.fromFirestore(doc))
-            .toList());
+    try {
+      return _usersCol
+          .snapshots()
+          .map((snapshot) => snapshot.docs
+              .map((doc) => UserModel.fromFirestore(doc))
+              .toList())
+          .handleError((_) => <UserModel>[]);
+    } catch (_) {
+      return Stream.value(<UserModel>[]);
+    }
   }
 
   // ==========================================

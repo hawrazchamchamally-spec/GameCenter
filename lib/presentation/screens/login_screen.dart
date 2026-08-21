@@ -14,13 +14,13 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController _emailController = TextEditingController(text: 'admin@gamelounge.iq');
-  final TextEditingController _passwordController = TextEditingController(text: 'admin123');
+  final TextEditingController _usernameController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
   bool _obscurePassword = true;
 
   @override
   void dispose() {
-    _emailController.dispose();
+    _usernameController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
@@ -127,15 +127,16 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           const SizedBox(height: 16),
 
-                          // Email
+                          // Username
                           TextFormField(
-                            controller: _emailController,
-                            keyboardType: TextInputType.emailAddress,
+                            controller: _usernameController,
+                            keyboardType: TextInputType.text,
                             decoration: const InputDecoration(
-                              labelText: 'البريد الإلكتروني / اسم الدخول',
-                              prefixIcon: Icon(Icons.email_outlined, color: AppColors.textSecondary),
+                              labelText: 'اسم المستخدم / كود الدخول',
+                              hintText: 'مثال: admin أو mustafa',
+                              prefixIcon: Icon(Icons.person_outline, color: AppColors.textSecondary),
                             ),
-                            validator: (v) => v == null || v.trim().isEmpty ? 'يرجى إدخال البريد' : null,
+                            validator: (v) => v == null || v.trim().isEmpty ? 'يرجى إدخال اسم المستخدم' : null,
                           ),
 
                           const SizedBox(height: 14),
@@ -197,7 +198,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   : () async {
                                       if (!_formKey.currentState!.validate()) return;
                                       final success = await authProvider.signInWithEmailAndPassword(
-                                        email: _emailController.text.trim(),
+                                        email: _usernameController.text.trim(),
                                         password: _passwordController.text.trim(),
                                       );
                                       if (success && mounted) {

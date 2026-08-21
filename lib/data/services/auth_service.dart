@@ -41,39 +41,86 @@ class AuthService {
     }
   }
 
-  /// Sign in with email and password
+  /// Sign in with email or username and password
   Future<UserModel?> signInWithEmailAndPassword({
     required String email,
     required String password,
   }) async {
-    final credential = await _auth.signInWithEmailAndPassword(
-      email: email.trim(),
-      password: password,
-    );
+    final identifier = email.trim();
+    final effectiveEmail = identifier.contains('@')
+        ? identifier
+        : '${identifier.toLowerCase()}@gamecenter.local';
 
-    if (credential.user != null) {
-      return await _firestoreService.getUserProfile(credential.user!.uid);
+    // 1. Direct check from Firestore database
+    try {
+      final dbUser = await _firestoreService.getUserByUsername(identifier);
+      if (dbUser != null) {
+        if (dbUser.password != null && dbUser.password == password.trim()) {
+          final updated = dbUser.copyWith(lastLoginAt: DateTime.now());
+          await _firestoreService.saveUserProfile(updated);
+          return updated;
+        }
+      }
+    } catch (_) {}
+
+    // 2. Firebase Auth verification fallback
+    try {
+      final credential = await _auth.signInWithEmailAndPassword(
+        email: effectiveEmail,
+        password: password.trim(),
+      );
+
+      if (credential.user != null) {
+        final profile = await _firestoreService.getUserProfile(credential.user!.uid);
+        return profile ??
+            UserModel(
+              uid: credential.user!.uid,
+              name: credential.user!.displayName ?? identifier,
+              username: identifier.contains('@') ? identifier.split('@').first : identifier,
+              email: credential.user!.email ?? effectiveEmail,
+              role: 'admin',
+              lastLoginAt: DateTime.now(),
+            );
+      }
+    } catch (e) {
+      // If neither matches, throw error for caller to handle
+      throw Exception('بيانات تسجيل الدخول غير صحيحة');
     }
     return null;
   }
 
   /// Register / Create a staff or admin user
   Future<UserModel> registerUser({
-    required String email,
-    required String password,
     required String name,
+    required String username,
+    required String password,
     required String role,
+    String? email,
   }) async {
-    final credential = await _auth.createUserWithEmailAndPassword(
-      email: email.trim(),
-      password: password,
-    );
+    final cleanUsername = username.trim().toLowerCase();
+    final effectiveEmail = email?.trim() ?? '$cleanUsername@gamecenter.local';
+
+    String uid = cleanUsername;
+
+    try {
+      final credential = await _auth.createUserWithEmailAndPassword(
+        email: effectiveEmail,
+        password: password.trim(),
+      );
+      if (credential.user != null) {
+        uid = credential.user!.uid;
+      }
+    } catch (_) {
+      // Firebase auth might fail if offline or virtual domain, proceed with Firestore storage
+    }
 
     final user = UserModel(
-      uid: credential.user!.uid,
-      name: name,
+      uid: cleanUsername.isNotEmpty ? cleanUsername : uid,
+      name: name.trim(),
+      username: cleanUsername,
       role: role,
-      email: email,
+      email: effectiveEmail,
+      password: password.trim(),
       createdAt: DateTime.now(),
     );
 

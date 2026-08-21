@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import 'core/constants/app_constants.dart';
 import 'core/firebase/firebase_options.dart';
+import 'core/theme/app_colors.dart';
 import 'core/theme/app_theme.dart';
 import 'providers/auth_provider.dart';
 import 'providers/market_provider.dart';
@@ -12,6 +13,7 @@ import 'providers/screen_provider.dart';
 import 'providers/session_provider.dart';
 import 'providers/shift_provider.dart';
 import 'presentation/screens/home_dashboard_screen.dart';
+import 'presentation/screens/login_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -63,9 +65,34 @@ class GameCenterApp extends StatelessWidget {
           GlobalCupertinoLocalizations.delegate,
         ],
 
-        // Home Route
-        home: const HomeDashboardScreen(),
+        // Protected Auth Gate: Directs to LoginScreen if not authenticated
+        home: const AuthGate(),
       ),
     );
+  }
+}
+
+/// Authentication Gate guarding access to HomeDashboardScreen
+class AuthGate extends StatelessWidget {
+  const AuthGate({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final auth = Provider.of<AuthProvider>(context);
+
+    if (auth.isLoading) {
+      return const Scaffold(
+        backgroundColor: AppColors.background,
+        body: Center(
+          child: CircularProgressIndicator(color: AppColors.primaryNeon),
+        ),
+      );
+    }
+
+    if (auth.isAuthenticated && auth.currentUser != null) {
+      return const HomeDashboardScreen();
+    }
+
+    return const LoginScreen();
   }
 }
