@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1047085234746",
+    "project_id": "gamecentermanager",
+    "storage_bucket": "gamecentermanager.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1047085234746:android:5bcd10cddcfe2b20d6d303",
+        "android_client_info": {
+          "package_name": "com.gamecenter.app.game_center"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCIhEP6QxgKZTmTw7ydl3l9aN26LkCDjAY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
